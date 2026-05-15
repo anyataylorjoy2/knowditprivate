@@ -1,0 +1,9 @@
+[
+  {
+    "contract": "UnstoppableLender",
+    "function": "flashLoan",
+    "check": "assert-on-dynamic-value",
+    "impact": "High",
+    "description": "flashLoan uses assert() on equality comparison in UnstoppableLender — can be violated by external manipulation"
+  }
+]

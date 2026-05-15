@@ -1,0 +1,15 @@
+[package]
+name = "verifier"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+agent-core = { path = "../agent-core" }
+sol-ast = { path = "../sol-ast" }
+semantic = { path = "../semantic" }
+patterns = { path = "../patterns" }
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+regex.workspace = true

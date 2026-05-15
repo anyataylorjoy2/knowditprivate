@@ -1,0 +1,20 @@
+[
+  {
+    "check": "first-depositor-share-inflation",
+    "attack_type": "Arithmetic",
+    "description": "First depositor can manipulate initial share price by depositing minimal liquidity, causing later depositors to receive undervalued shares",
+    "impact": "High"
+  },
+  {
+    "check": "price-manipulation",
+    "attack_type": "Arithmetic",
+    "description": "AMM price can be manipulated through flash loans or sandwich attacks affecting swap calculations",
+    "impact": "High"
+  },
+  {
+    "check": "liquidity-drain",
+    "attack_type": "Arithmetic",
+    "description": "Improper reserve calculation can allow draining pool liquidity through crafted swap amounts",
+    "impact": "High"
+  }
+]

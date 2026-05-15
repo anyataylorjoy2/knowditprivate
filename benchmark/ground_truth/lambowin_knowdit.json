@@ -1,0 +1,128 @@
+[
+  {
+    "id": "H-01",
+    "check": "incorrect-amount-minting",
+    "attack_type": "Arithmetic",
+    "contract": "VirtualToken",
+    "function": "cashIn",
+    "description": "Loss of user funds in VirtualToken's cashIn function due to using msg.value instead of amount for minting, causing ERC20 depositors to receive 0 virtual tokens",
+    "impact": "High"
+  },
+  {
+    "id": "H-02",
+    "check": "front-run-DoS",
+    "attack_type": "Denial of Service",
+    "contract": "LamboFactory",
+    "function": "createLaunchPad",
+    "description": "LamboFactory can be permanently DoS-ed because createPair can be frontrun by attacker who pre-calculates deterministic token address and creates Uniswap pair first",
+    "impact": "High"
+  },
+  {
+    "id": "H-03",
+    "check": "incorrect-direction-mask",
+    "attack_type": "Arithmetic",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "_getQuoteAndDirection",
+    "description": "Calculation for directionMask is incorrect because it assumes WETH is always token1, but Uniswap sorts addresses lexicographically leading to wrong swap direction",
+    "impact": "High"
+  },
+  {
+    "id": "H-04",
+    "check": "missing-access-control",
+    "attack_type": "Access Control",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "rebalance",
+    "description": "Anyone can call rebalance() with arbitrary values for directionMask, amountIn, amountOut, causing the pool to be unbalanced instead of achieving 1:1 peg",
+    "impact": "High"
+  },
+  {
+    "id": "M-01",
+    "check": "griefing-virtual-tokens",
+    "attack_type": "Denial of Service",
+    "contract": "VirtualToken",
+    "function": "takeLoan",
+    "description": "Attacker can maliciously consume VirtualTokens by launching cheap pools to exhaust the 300 ETH per block loan limit, preventing legitimate users from launching new pools",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-02",
+    "check": "incorrect-rebalance-formula",
+    "attack_type": "Arithmetic",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "_getTokenInOut",
+    "description": "Rebalancing formula assumes constant sum AMM (x+y=k) instead of constant product (x*y=k), and ignores inactive tick liquidity, producing imprecise rebalancing amounts",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-03",
+    "check": "missing-deadline",
+    "attack_type": "Other",
+    "contract": "LamboVEthRouter",
+    "function": "sellQuote",
+    "description": "sellQuote and buyQuote are missing deadline checks in LamboVEthRouter, allowing pending transactions to be sandwich-attacked when prices change",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-04",
+    "check": "stuck-eth",
+    "attack_type": "Other",
+    "contract": "LamboVEthRouter",
+    "function": "receive",
+    "description": "Accumulated ETH in LamboVEthRouter will be irretrievable because there is no sweep function and the 1-wei rounding in refunds accumulates over time",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-05",
+    "check": "incorrect-struct-field",
+    "attack_type": "Other",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "_getQuoteAndDirection",
+    "description": "Incorrect struct field name (amountIn instead of amount) and hardcoded sqrtPriceLimitX96=0 in _getQuoteAndDirection, leading to runtime failures and no price constraint",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-06",
+    "check": "malicious-pool-rebalancer-bypass",
+    "attack_type": "Access Control",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "rebalance",
+    "description": "Attacker can capture VETH-WETH depeg profits through a malicious pool by crafting directionMask that ORs with uniswapPool to redirect swaps, rendering rebalancer useless",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-07",
+    "check": "profit-requirement-blocks-peg",
+    "attack_type": "Other",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "rebalance",
+    "description": "Rebalance profit requirement (profit > 0) prevents maintaining VETH/WETH peg when rebalancing would reduce but not eliminate the depeg",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-08",
+    "check": "frontrun-rebalance",
+    "attack_type": "Other",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "rebalance",
+    "description": "Users can frontrun the rebalance transaction to prevent rebalancing for their gain, causing loss of funds for protocol and its users",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-09",
+    "check": "okx-commission-DoS",
+    "attack_type": "Denial of Service",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "rebalance",
+    "description": "Rebalance will be completely DoS-ed if OKX commission rate goes beyond the fee limits, as the flash loan repayment plus commission exceeds the swap output",
+    "impact": "Medium"
+  },
+  {
+    "id": "M-10",
+    "check": "incorrect-nft-metadata",
+    "attack_type": "Arithmetic",
+    "contract": "LamboRebalanceOnUniwap",
+    "function": "rebalance",
+    "description": "LP for Uniswap V3 pool of underlying tokens with decimals != 18 would have incorrect NFT metadata due to decimal mismatch in position management",
+    "impact": "Medium"
+  }
+]

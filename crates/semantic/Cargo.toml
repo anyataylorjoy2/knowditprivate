@@ -1,0 +1,14 @@
+[package]
+name = "semantic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+sol-ast = { path = "../sol-ast" }
+solang-parser.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+petgraph.workspace = true
+regex.workspace = true

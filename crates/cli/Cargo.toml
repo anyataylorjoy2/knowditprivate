@@ -1,0 +1,31 @@
+[package]
+name = "cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "sol-agent"
+path = "src/main.rs"
+
+[dependencies]
+agent-core = { path = "../agent-core" }
+agent-llm = { path = "../agent-llm" }
+sol-ast = { path = "../sol-ast" }
+orchestrator = { path = "../orchestrator" }
+semantic = { path = "../semantic" }
+knowdit-client = { path = "../knowdit-client" }
+spec-gen = { path = "../spec-gen" }
+harness-synth = { path = "../harness-synth" }
+fuzz-exec = { path = "../fuzz-exec" }
+reflector = { path = "../reflector" }
+etherscan-fetcher = { path = "../etherscan-fetcher" }
+solang-parser.workspace = true
+clap.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+async-trait = "0.1"

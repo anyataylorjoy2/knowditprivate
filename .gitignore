@@ -1,0 +1,64 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# Cache directories
+.sol-agent-cache/
+*.sol-agent-cache/
+.knowdit/
+.cache/
+.solidity-cache/
+cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+**/*.o
+**/*.a
+
+# Test artifacts
+/tmp/
+*.log
+
+# API keys (IMPORTANT!)
+.env
+.env.local
+.env.*.local
+
+# AI tools
+.claude/
+.openai/
+.codex/
+
+# Foundry
+foundry/cache/
+
+# Node
+node_modules/
+npm-debug.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Temporary files
+*.tmp
+*.bak
+.DS_Store
+
+# Target projects (external dependencies)
+targets/

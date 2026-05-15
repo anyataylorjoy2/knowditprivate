@@ -1,0 +1,14 @@
+[
+  {
+    "check": "reward-calculation-error",
+    "attack_type": "Arithmetic",
+    "description": "Reward calculation uses integer division that may truncate rewards unfairly among stakers",
+    "impact": "Medium"
+  },
+  {
+    "check": "reentrancy-risk",
+    "attack_type": "Reentrancy",
+    "description": "updateReward is called before state changes in unstake, potential reentrancy vector",
+    "impact": "High"
+  }
+]

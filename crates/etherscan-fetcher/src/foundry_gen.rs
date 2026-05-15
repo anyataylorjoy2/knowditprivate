@@ -1,0 +1,319 @@
+//! Foundry project generation from an Etherscan [`ContractBundle`].
+//!
+//! Writes the reconstructed files to disk in a layout that `forge build` can
+//! consume:
+//!
+//! ```text
+//! <output_dir>/
+//!   foundry.toml          # generated from bundle metadata
+//!   remappings.txt        # only if bundle had standard-json remappings
+//!   src/<path>            # all files written verbatim
+//!   metadata.json         # the raw bundle for traceability
+//! ```
+//!
+//! The generator does NOT clone external dependencies (OpenZeppelin etc.) — the
+//! caller is expected to either install them via `forge install` or rely on
+//! the remappings + flattened sources Etherscan already inlined.
+
+use crate::extractor::ContractBundle;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+use tracing::{debug, info, warn};
+
+/// Knobs for [`write_foundry_project`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FetchOptions {
+    /// Overwrite the output directory if it exists. Default: false.
+    pub overwrite: bool,
+    /// If `true`, also write a `metadata.json` next to `foundry.toml` for traceability.
+    pub write_metadata: bool,
+}
+
+impl Default for FetchOptions {
+    fn default() -> Self {
+        Self {
+            overwrite: false,
+            write_metadata: true,
+        }
+    }
+}
+
+/// Write the bundle to disk as a Foundry-compatible project.
+///
+/// Returns the resolved output path. The directory must not exist unless
+/// `opts.overwrite` is true (or the directory is empty).
+pub fn write_foundry_project(
+    bundle: &ContractBundle,
+    output_dir: impl AsRef<Path>,
+    opts: &FetchOptions,
+) -> Result<PathBuf, crate::client::FetchError> {
+    let output_dir = output_dir.as_ref();
+    prepare_output_dir(output_dir, opts.overwrite)?;
+    info!(
+        "Writing Foundry project for {} ({}) to {}",
+        bundle.primary_contract,
+        bundle.address,
+        output_dir.display()
+    );
+
+    // 1. Write all source files preserving directory layout.
+    for file in &bundle.files {
+        let target = output_dir.join(&file.rel_path);
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&target, &file.content)?;
+        debug!("wrote {} ({} bytes)", target.display(), file.content.len());
+    }
+
+    // 2. Generate foundry.toml from metadata.
+    let foundry_toml = generate_foundry_toml(bundle);
+    std::fs::write(output_dir.join("foundry.toml"), foundry_toml)?;
+
+    // 3. If standard-json settings carried remappings, emit remappings.txt.
+    if let Some(remappings) = extract_remappings(&bundle.raw_settings) {
+        if !remappings.is_empty() {
+            let body = remappings.join("\n") + "\n";
+            std::fs::write(output_dir.join("remappings.txt"), body)?;
+        }
+    }
+
+    // 4. Optional metadata.json
+    if opts.write_metadata {
+        let metadata = serde_json::to_string_pretty(bundle).unwrap_or_else(|_| "{}".to_string());
+        std::fs::write(output_dir.join("metadata.json"), metadata)?;
+    }
+
+    Ok(output_dir.to_path_buf())
+}
+
+fn prepare_output_dir(dir: &Path, overwrite: bool) -> Result<(), crate::client::FetchError> {
+    if dir.exists() {
+        if !overwrite {
+            // Allow if directory is empty.
+            let entries = std::fs::read_dir(dir)?;
+            if entries.count() > 0 {
+                return Err(crate::client::FetchError::Io(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    format!(
+                        "{} already exists and is not empty (use overwrite=true)",
+                        dir.display()
+                    ),
+                )));
+            }
+        }
+    } else {
+        std::fs::create_dir_all(dir)?;
+    }
+    Ok(())
+}
+
+fn generate_foundry_toml(bundle: &ContractBundle) -> String {
+    let evm = if bundle.metadata.evm_version.is_empty()
+        || bundle.metadata.evm_version.eq_ignore_ascii_case("default")
+    {
+        None
+    } else {
+        Some(bundle.metadata.evm_version.clone())
+    };
+
+    let mut toml = String::new();
+    toml.push_str("[profile.default]\n");
+    toml.push_str(&format!("src = \"{}\"\n", default_src_dir(bundle)));
+    toml.push_str("out = \"out\"\n");
+    toml.push_str("libs = [\"lib\"]\n");
+    if !bundle.metadata.compiler_semver.is_empty() {
+        toml.push_str(&format!(
+            "solc_version = \"{}\"\n",
+            bundle.metadata.compiler_semver
+        ));
+    }
+    toml.push_str(&format!(
+        "optimizer = {}\n",
+        bundle.metadata.optimizer_enabled
+    ));
+    toml.push_str(&format!(
+        "optimizer_runs = {}\n",
+        bundle.metadata.optimizer_runs
+    ));
+    if let Some(v) = evm {
+        toml.push_str(&format!("evm_version = \"{}\"\n", v.to_lowercase()));
+    }
+    // Annotation header for traceability
+    toml.push_str(&format!(
+        "\n# Generated by etherscan-fetcher\n# chain_id = {}\n# address = {}\n# primary_contract = {}\n",
+        bundle.chain_id, bundle.address, bundle.primary_contract,
+    ));
+    toml
+}
+
+/// Inspect the standard-json `settings` for remappings.
+/// Returns `Some(non_empty_vec)` only when usable remappings were found.
+fn extract_remappings(settings: &Option<serde_json::Value>) -> Option<Vec<String>> {
+    let s = settings.as_ref()?;
+    let arr = s.get("remappings")?.as_array()?;
+    let mut out = Vec::with_capacity(arr.len());
+    for v in arr {
+        if let Some(text) = v.as_str() {
+            if !text.is_empty() {
+                out.push(text.to_string());
+            }
+        }
+    }
+    if out.is_empty() {
+        warn!("remappings present but all entries empty");
+        None
+    } else {
+        Some(out)
+    }
+}
+
+/// Pick a sensible `src` directory: if every file lives under `contracts/`,
+/// use that; if under `src/`, use that; otherwise default to `.` so forge
+/// can pick up paths verbatim.
+fn default_src_dir(bundle: &ContractBundle) -> &'static str {
+    let all_under = |prefix: &str| {
+        !bundle.files.is_empty() && bundle.files.iter().all(|f| f.rel_path.starts_with(prefix))
+    };
+    if all_under("src/") {
+        "src"
+    } else if all_under("contracts/") {
+        "contracts"
+    } else {
+        "."
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::Chain;
+    use crate::extractor::{ExtractedFile, ProxyInfo, SolMetadata};
+    use tempfile::TempDir;
+
+    fn make_bundle(files: Vec<(&str, &str)>) -> ContractBundle {
+        ContractBundle {
+            chain_id: Chain::Ethereum.chain_id(),
+            chain_name: "Ethereum".to_string(),
+            address: "0xdead".to_string(),
+            primary_contract: "Foo".to_string(),
+            files: files
+                .into_iter()
+                .map(|(p, c)| ExtractedFile {
+                    rel_path: p.to_string(),
+                    content: c.to_string(),
+                })
+                .collect(),
+            metadata: SolMetadata {
+                compiler_version_raw: "v0.8.20+commit.a1b79de6".to_string(),
+                compiler_semver: "0.8.20".to_string(),
+                optimizer_enabled: true,
+                optimizer_runs: 200,
+                evm_version: "Paris".to_string(),
+                license: "MIT".to_string(),
+                constructor_args_hex: String::new(),
+            },
+            proxy: None,
+            raw_settings: None,
+        }
+    }
+
+    #[test]
+    fn writes_basic_project() {
+        let dir = TempDir::new().unwrap();
+        let bundle = make_bundle(vec![
+            ("src/Foo.sol", "contract Foo {}"),
+            ("src/lib/Math.sol", "library Math {}"),
+        ]);
+        let out = write_foundry_project(&bundle, dir.path(), &FetchOptions::default()).unwrap();
+        assert_eq!(out, dir.path().to_path_buf());
+        assert!(dir.path().join("src/Foo.sol").is_file());
+        assert!(dir.path().join("src/lib/Math.sol").is_file());
+        assert!(dir.path().join("foundry.toml").is_file());
+        assert!(dir.path().join("metadata.json").is_file());
+        // No remappings → no remappings.txt
+        assert!(!dir.path().join("remappings.txt").exists());
+    }
+
+    #[test]
+    fn foundry_toml_includes_compiler_settings() {
+        let dir = TempDir::new().unwrap();
+        let bundle = make_bundle(vec![("src/Foo.sol", "contract Foo {}")]);
+        write_foundry_project(&bundle, dir.path(), &FetchOptions::default()).unwrap();
+        let toml = std::fs::read_to_string(dir.path().join("foundry.toml")).unwrap();
+        assert!(toml.contains("solc_version = \"0.8.20\""));
+        assert!(toml.contains("optimizer = true"));
+        assert!(toml.contains("optimizer_runs = 200"));
+        assert!(toml.contains("evm_version = \"paris\""));
+        assert!(toml.contains("src = \"src\""));
+        assert!(toml.contains("chain_id = 1"));
+    }
+
+    #[test]
+    fn picks_contracts_dir_when_all_under_it() {
+        let dir = TempDir::new().unwrap();
+        let bundle = make_bundle(vec![
+            ("contracts/A.sol", "contract A {}"),
+            ("contracts/B.sol", "contract B {}"),
+        ]);
+        write_foundry_project(&bundle, dir.path(), &FetchOptions::default()).unwrap();
+        let toml = std::fs::read_to_string(dir.path().join("foundry.toml")).unwrap();
+        assert!(toml.contains("src = \"contracts\""));
+    }
+
+    #[test]
+    fn writes_remappings_when_present() {
+        let dir = TempDir::new().unwrap();
+        let mut bundle = make_bundle(vec![("src/Foo.sol", "contract Foo {}")]);
+        bundle.raw_settings = Some(serde_json::json!({
+            "remappings": ["@openzeppelin/=lib/openzeppelin-contracts/", "@solady/=lib/solady/src/"]
+        }));
+        write_foundry_project(&bundle, dir.path(), &FetchOptions::default()).unwrap();
+        let remappings = std::fs::read_to_string(dir.path().join("remappings.txt")).unwrap();
+        assert!(remappings.contains("@openzeppelin/=lib/openzeppelin-contracts/"));
+        assert!(remappings.contains("@solady/=lib/solady/src/"));
+    }
+
+    #[test]
+    fn refuses_nonempty_output_dir_by_default() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("existing.txt"), "content").unwrap();
+        let bundle = make_bundle(vec![("src/Foo.sol", "contract Foo {}")]);
+        let err = write_foundry_project(&bundle, dir.path(), &FetchOptions::default()).unwrap_err();
+        match err {
+            crate::client::FetchError::Io(e) => {
+                assert_eq!(e.kind(), std::io::ErrorKind::AlreadyExists)
+            }
+            other => panic!("expected Io AlreadyExists, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn overwrite_allows_nonempty_dir() {
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("existing.txt"), "content").unwrap();
+        let bundle = make_bundle(vec![("src/Foo.sol", "contract Foo {}")]);
+        let opts = FetchOptions {
+            overwrite: true,
+            write_metadata: false,
+        };
+        write_foundry_project(&bundle, dir.path(), &opts).unwrap();
+        assert!(dir.path().join("src/Foo.sol").is_file());
+        // metadata.json should NOT be written when write_metadata=false
+        assert!(!dir.path().join("metadata.json").exists());
+        // existing file should still be there
+        assert!(dir.path().join("existing.txt").is_file());
+    }
+
+    #[test]
+    fn proxy_field_serializes_in_metadata() {
+        let dir = TempDir::new().unwrap();
+        let mut bundle = make_bundle(vec![("src/P.sol", "contract P {}")]);
+        bundle.proxy = Some(ProxyInfo {
+            implementation_address: "0xdeadbeef".to_string(),
+        });
+        write_foundry_project(&bundle, dir.path(), &FetchOptions::default()).unwrap();
+        let metadata = std::fs::read_to_string(dir.path().join("metadata.json")).unwrap();
+        assert!(metadata.contains("0xdeadbeef"));
+    }
+}

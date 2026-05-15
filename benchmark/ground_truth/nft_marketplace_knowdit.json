@@ -1,0 +1,14 @@
+[
+  {
+    "check": "access-control",
+    "attack_type": "Access Control",
+    "description": "withdraw function allows anyone to withdraw seller balance if they know the amount, missing owner check",
+    "impact": "High"
+  },
+  {
+    "check": "price-manipulation",
+    "attack_type": "Arithmetic",
+    "description": "Listing duration can be manipulated by setting very long durations affecting market dynamics",
+    "impact": "Medium"
+  }
+]

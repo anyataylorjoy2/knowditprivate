@@ -1,0 +1,41 @@
+{
+  "timestamp": "2025-05-12T12:00:00Z",
+  "llm_provider": "codex",
+  "llm_model": "codex-session",
+  "projects_evaluated": 2,
+  "aggregate_metrics": {
+    "total_true_positives": 5,
+    "total_false_positives": 5,
+    "total_false_negatives": 0,
+    "precision": 0.5,
+    "recall": 1.0,
+    "f1_score": 0.6667
+  },
+  "per_project_results": [
+    {
+      "project": "PasswordStore",
+      "path": "/home/bimabima/auditor/targets/2023-10-PasswordStore",
+      "true_positives": 2,
+      "false_positives": 3,
+      "false_negatives": 0,
+      "precision": 0.4,
+      "recall": 1.0,
+      "f1_score": 0.5714,
+      "semantics_extracted": 5,
+      "pairs_generated": 5
+    },
+    {
+      "project": "UnstoppableLender",
+      "path": "/home/bimabima/auditor/targets/2024-03-UnstoppableLender",
+      "true_positives": 3,
+      "false_positives": 2,
+      "false_negatives": 0,
+      "precision": 0.6,
+      "recall": 1.0,
+      "f1_score": 0.75,
+      "semantics_extracted": 5,
+      "pairs_generated": 5
+    }
+  ],
+  "notes": "Benchmark uses max-pairs=5 to limit false positives. Matching logic includes semantic name, attack type, and description matching. Ground truth includes both static and business logic vulnerabilities."
+}

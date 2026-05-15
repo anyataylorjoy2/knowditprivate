@@ -1,0 +1,20 @@
+[
+  {
+    "check": "assert-on-dynamic-value",
+    "attack_type": "Arithmetic",
+    "description": "flashLoan uses assert() on equality comparison in UnstoppableLender — can be violated by external manipulation of totalDeposited",
+    "impact": "High"
+  },
+  {
+    "check": "flash-loan-fee-manipulation",
+    "attack_type": "Arithmetic",
+    "description": "Flash loan fee calculation can be manipulated through external deposits/withdrawals affecting totalDeposited",
+    "impact": "High"
+  },
+  {
+    "check": "reentrancy-risk",
+    "attack_type": "Reentrancy",
+    "description": "flashLoan calls external contract (msg.sender) before state update, potential reentrancy vector",
+    "impact": "High"
+  }
+]

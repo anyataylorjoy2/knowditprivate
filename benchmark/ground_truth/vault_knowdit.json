@@ -1,0 +1,14 @@
+[
+  {
+    "check": "first-depositor-share-inflation",
+    "attack_type": "Arithmetic",
+    "description": "convertToShares returns 1:1 conversion when totalAssets=0, allowing first depositor to inflate share price",
+    "impact": "High"
+  },
+  {
+    "check": "share-accounting-error",
+    "attack_type": "Arithmetic",
+    "description": "Share calculation may have rounding errors that can be exploited for profit",
+    "impact": "Medium"
+  }
+]

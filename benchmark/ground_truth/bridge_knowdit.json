@@ -1,0 +1,20 @@
+[
+  {
+    "check": "authority-abuse",
+    "attack_type": "Access Control",
+    "description": "emergencyWithdraw allows bridge authority to drain all locked tokens without checks",
+    "impact": "Critical"
+  },
+  {
+    "check": "liquidity-insufficient",
+    "attack_type": "Arithmetic",
+    "description": "withdraw may fail if bridge authority unlocks more tokens than available liquidity",
+    "impact": "High"
+  },
+  {
+    "check": "replay-attack",
+    "attack_type": "Arithmetic",
+    "description": "nonce-based replay protection may have collision or overflow issues",
+    "impact": "Medium"
+  }
+]
