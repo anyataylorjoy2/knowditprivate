@@ -434,6 +434,33 @@ crates/
 └── cli/                 # sol-agent binary (analyze | mapper | audit | fetch | benchmark)
 ```
 
+## Target Projects
+
+Untuk testing dan benchmarking, Anda perlu clone target projects secara manual:
+
+```bash
+cd targets
+
+# Code4rena projects
+git clone https://github.com/code-423n4/2024-12-lambowin.git
+git clone https://github.com/code-423n4/2023-10-PasswordStore.git
+git clone https://github.com/code-423n4/2024-01-reNFT.git
+git clone https://github.com/code-423n4/2024-03-UnstoppableLender.git
+git clone https://github.com/code-423n4/2024-04-AMMPool.git
+git clone https://github.com/code-423n4/2024-05-Vault.git
+git clone https://github.com/code-423n4/2024-06-Staking.git
+git clone https://github.com/code-423n4/2024-07-NFTMarketplace.git
+git clone https://github.com/code-423n4/2024-08-Bridge.git
+
+# Initialize submodules jika ada
+cd 2024-12-lambowin && git submodule update --init --recursive
+```
+
+**Catatan:** Target projects tidak diupload ke repository ini untuk menghindari:
+- Repository size yang sangat besar
+- Kompleksitas git submodule
+- Duplikasi data (projects sudah ada di GitHub aslinya
+
 ## Lisensi
 
 MIT OR Apache-2.0
